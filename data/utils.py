@@ -11,50 +11,42 @@ from tokenization_kobert import KoBertTokenizer
 from torch.utils.data import Dataset
 from torch.nn.utils.rnn import pad_sequence
 from typing import Tuple, List, Optional
-
-sample_rate = 24000
-frame_shift = 12.5
-frame_length = 50
-n_iter = 30
-n_fft = 2048
-hop_length = int(frame_shift * 0.001*sample_rate)
-win_length = int(frame_length * 0.001*sample_rate)
+from ..hyperparameter import hyperparameters as hp
 
 class TacotronDataset(Dataset):
-    def __init__(self, text_files, audio_files) -> None:
+    def __init__(self, text, lin_targets, mel_targets) -> None:
         '''
-        text_files = json file for tokenized text data
-        audio_files = list of raw audio data files
+        Args:
+            - text:
+                - list of tokenized text data
+            - lin_targets:
+                - numpy array of linear spectrograms
+            - mel_targets:
+                - numpy array of mel spectrograms
         '''
         super().__init__()
-        self.audio = audio_files
-        with open(text_files, "rt", encoding='UTF8') as f:
-            self.text = f.readlines()
+        self.lin_targets = lin_targets
+        self.mel_targets = mel_targets
+        self.text = text
 
     def __len__(self):
         assert len(self.audio) == len(self.text)
         return len(self.audio)
 
-    def get_mel(self, index):
-        file = self.audio[index]
-        data, _ = librosa.load(file, sr = sample_rate)
-        return np.abs(librosa.stft(data,n_fft,hop_length,win_length))
-
-    def get_text(self, index):
-        return self.text[index]
-
     def __getitem__(self, index) -> Tuple(Tensor):
-        mel = self.get_mel(index)
-        text = self.get_text(index)
-        return (torch.tensor(mel), torch.tensor(text))
+        text = self.text[index]
+        lin = self.lin_targets[index]
+        mel = self.mel_targets[index]
+        return (torch.tensor(text), torch.tensor(mel), torch.tensor(lin))
 
 
 def collate_fn(inputs: List(Tuple(Tensor)))->List[Tensor]:
-    mel, text = List(zip(*inputs))
-    mel = pad_sequence(mel, batch_first= True, padding_value=0)
+    text, mel, lin = List(zip(*inputs))
     text = pad_sequence(text, batch_first= True, padding_value=0)
+    mel = pad_sequence(mel, batch_first= True, padding_value=0)
+    lin = pad_sequence(lin, batch_first= True, padding_value=0)
 
-    return [torch.stack(mel), torch.stack(text)]
+    return [torch.stack(text), torch.stack(mel), torch.stack(lin)]
 
 
 def kobert_tokenizer(text, outfile, tokenizer : KoBertTokenizer):
