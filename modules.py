@@ -2,14 +2,6 @@ import torch
 from torch import nn
 from torch.nn import functional as fnn
 import torch.nn.functional as F
-from torch.utils.data import Dataset, DataLoader
-from torch.optim import Adam
-from torch.optim import Adadelta
-#from transformers import get_constant_schedule_with_warmup
-from torch.nn.utils.clip_grad import clip_grad_norm_
-from tqdm.notebook import tqdm
-
-from torch.nn.utils.rnn import pad_sequence
 
 
 class PreNet(nn.Module):
@@ -44,7 +36,7 @@ class CBHG(nn.Module):
                 nn.ConstantPad1d(((k-1)//2, (k-1)//2 +1),0),
                 nn.Conv1d(128, 128, k)
             ) 
-            for k in range(K)]) 
+            for k in range(1,K+1)]) 
         self.maxpool = nn.MaxPool1d(kernel_size=2, stride=1)
         self.conv1d_proj = nn.Sequential(
             nn.Conv1d(128, 256, 3),
@@ -53,7 +45,7 @@ class CBHG(nn.Module):
         self.highway = nn.ModuleList([
             nn.Sequential(
                 nn.Linear(128, 128),
-                F.relu()
+                nn.ReLU()
             )
             for _ in range(4)])
 
@@ -99,13 +91,13 @@ class TanhAttention():
         self.tanh = nn.Tanh()
 
     def forward(self, key, query):
-        query_repeated = query.unsqueeze(1).repeat(1,key.size(1),1,1)
+        query_repeated = query.unsqueeze(1).repeat(1,key.size(1),1)
 
         attention = self.v(self.tanh(self.W1(key) + self.W2(query_repeated)))
         weight = nn.Softmax(dim=1)(attention)
-        context = torch.matmul(weight.transpose(1,2), key).squeeze(1)
+        context = torch.matmul(weight.unsqueeze(1), key).squeeze(1)
 
-        return context
+        return context, weight
 
 
 class DecoderRNN(nn.Module):

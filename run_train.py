@@ -1,34 +1,15 @@
-from ..data.utils import TacotronDataset, collate_fn
+from utils import TacotronDataset, collate_fn
 from torch.utils.data import DataLoader
 from tqdm.notebook import tqdm
 import numpy as np
 
 def run_train(n_epochs,
-              batch_size,
               model,
               optimizer,
               device,
-              text_train, 
-              lin_train,
-              mel_train,
-              text_dev,
-              lin_dev,
-              mel_dev):
-  #load dataset
-  train_dataset = TacotronDataset(text_train, lin_train, mel_train)
-  dev_dataset = TacotronDataset(text_dev, lin_dev, mel_dev)
-
-  train_dataloader = DataLoader(train_dataset,
-                                batch_size=batch_size,
-                                shuffle=True,
-                                collate_fn= collate_fn)
-  dev_dataloader = DataLoader(dev_dataset,
-                                batch_size=batch_size,
-                                collate_fn= collate_fn)
-
-  #init gradient
-  model.zero_grad()
-
+              train_dataloader,
+              dev_dataloader):
+  
   #run_train: compute loss and update gradient
   for epoch in range(n_epochs):
     model.train()
@@ -57,7 +38,7 @@ def run_train(n_epochs,
     with tqdm(total = len(dev_dataloader), dsec = f"Dev {epoch}") as pbar:
       for dev_batch in dev_dataloader:
         text, mel_targets, lin_targets = (tensor.to(device) for tensor in dev_batch)
-        mel_outputs, lin_outputs, _ = model(text, mel_targets)
+        mel_outputs, lin_outputs, _= model(text, mel_targets)
 
         #L1 loss
         mel_loss = abs(mel_outputs - mel_targets)

@@ -1,9 +1,8 @@
 import librosa
 import librosa.display
 import numpy as np
-import json
-from ..tokenizer import get_tokenized
-from ..hyperparameter import hyperparameters as hp
+from tokenizer import get_tokenized
+import hyperparameter as hp
 
 def get_lin(files, outfile):
     '''
